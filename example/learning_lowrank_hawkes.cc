@@ -20,7 +20,7 @@ int main(const int argc, const char** argv)
 	options.ub_nuclear_lambda0 = 25;
 	options.ub_nuclear_alpha = 25;
 	options.rho = 1e1;
-	options.ini_max_iter = 1000;
+	options.ini_max_iter = 300;
 	Eigen::MatrixXd TrueLambda0, TrueAlpha;
 	LoadEigenMatrixFromTxt("data/truth-syn-Lambda0", num_users, num_items, TrueLambda0);
 	LoadEigenMatrixFromTxt("data/truth-syn-Alpha", num_users, num_items, TrueAlpha);

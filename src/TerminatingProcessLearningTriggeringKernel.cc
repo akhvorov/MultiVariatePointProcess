@@ -43,7 +43,7 @@ void TerminatingProcessLearningTriggeringKernel::Initialize(const std::vector<Se
 
 						MatrixK[c].row(j) = ((- 0.5) * (((deltaT_ji - tau_.transpose().array()) / sigma_.transpose().array()).square())).exp();
 
-						MatrixG[c].row(j) = (sqrt2PIsigma_.array() * (((tau_.array() - deltaT_ji) / sqrt2sigma_.array()).unaryExpr(std::ptr_fun(erfc)) - erfctau_sigma_.array())).transpose();
+						MatrixG[c].row(j) = (sqrt2PIsigma_.array() * (((tau_.array() - deltaT_ji) / sqrt2sigma_.array()).unaryExpr(std::ptr_fun<double, double>(erfc)) - erfctau_sigma_.array())).transpose();
 
 					}else
 					{
@@ -60,7 +60,7 @@ void TerminatingProcessLearningTriggeringKernel::Initialize(const std::vector<Se
 
 					double deltaT_ji = data[c].GetTimeWindow() - j_time;
 
-					MatrixG[c].row(j) = (sqrt2PIsigma_.array() * (((tau_.array() - deltaT_ji) / sqrt2sigma_.array()).unaryExpr(std::ptr_fun(erfc)) - erfctau_sigma_.array())).transpose();
+					MatrixG[c].row(j) = (sqrt2PIsigma_.array() * (((tau_.array() - deltaT_ji) / sqrt2sigma_.array()).unaryExpr(std::ptr_fun<double, double>(erfc)) - erfctau_sigma_.array())).transpose();
 
 				}
 			}	
@@ -101,7 +101,7 @@ void TerminatingProcessLearningTriggeringKernel::InitializeWithGraph(const std::
 
 						MatrixK[c].row(j) = ((- 0.5) * (((deltaT_ji - tau_.transpose().array()) / sigma_.transpose().array()).square())).exp();
 
-						MatrixG[c].row(j) = (sqrt2PIsigma_.array() * (((tau_.array() - deltaT_ji) / sqrt2sigma_.array()).unaryExpr(std::ptr_fun(erfc)) - erfctau_sigma_.array())).transpose();
+						MatrixG[c].row(j) = (sqrt2PIsigma_.array() * (((tau_.array() - deltaT_ji) / sqrt2sigma_.array()).unaryExpr(std::ptr_fun<double, double>(erfc)) - erfctau_sigma_.array())).transpose();
 
 					}
 				}
@@ -117,7 +117,7 @@ void TerminatingProcessLearningTriggeringKernel::InitializeWithGraph(const std::
 
 						double deltaT_ji = data[c].GetTimeWindow() - j_time;
 
-						MatrixG[c].row(j) = (sqrt2PIsigma_.array() * (((tau_.array() - deltaT_ji) / sqrt2sigma_.array()).unaryExpr(std::ptr_fun(erfc)) - erfctau_sigma_.array())).transpose();
+						MatrixG[c].row(j) = (sqrt2PIsigma_.array() * (((tau_.array() - deltaT_ji) / sqrt2sigma_.array()).unaryExpr(std::ptr_fun<double, double>(erfc)) - erfctau_sigma_.array())).transpose();
 
 					}
 				}

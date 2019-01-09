@@ -20,7 +20,7 @@ void HawkesLearningTriggeringKernel::InitializeConstants()
 
 	sqrt2sigma_ = sqrt(2) * sigma_.array();
 	sqrt2PIsigma_ = 0.5 * sqrt(2 * PI) * sigma_.array();
-	erfctau_sigma_ = (tau_.array() / sqrt2sigma_.array()).unaryExpr(std::ptr_fun(erfc));
+	erfctau_sigma_ = (tau_.array() / sqrt2sigma_.array()).unaryExpr(std::ptr_fun<double, double>(erfc));
 }
 
 void HawkesLearningTriggeringKernel::Initialize(const std::vector<Sequence>& data)
@@ -76,7 +76,7 @@ void HawkesLearningTriggeringKernel::Initialize(const std::vector<Sequence>& dat
 
 				double deltaT_ji = data[c].GetTimeWindow() - j_time;
 
-				MatrixG[c].row(j) = MatrixG[c].row(j).array() + (sqrt2PIsigma_.array() * (((tau_.array() - deltaT_ji) / sqrt2sigma_.array()).unaryExpr(std::ptr_fun(erfc)) - erfctau_sigma_.array())).transpose();
+				MatrixG[c].row(j) = MatrixG[c].row(j).array() + (sqrt2PIsigma_.array() * (((tau_.array() - deltaT_ji) / sqrt2sigma_.array()).unaryExpr(std::ptr_fun<double, double>(erfc)) - erfctau_sigma_.array())).transpose();
 
 			}
 			
@@ -150,7 +150,7 @@ void HawkesLearningTriggeringKernel::InitializeWithGraph(const std::vector<Seque
 				{
 					double deltaT_ji = data[c].GetTimeWindow() - j_time;
 
-					MatrixG[c].row(j) = MatrixG[c].row(j).array() + (sqrt2PIsigma_.array() * (((tau_.array() - deltaT_ji) / sqrt2sigma_.array()).unaryExpr(std::ptr_fun(erfc)) - erfctau_sigma_.array())).transpose();
+					MatrixG[c].row(j) = MatrixG[c].row(j).array() + (sqrt2PIsigma_.array() * (((tau_.array() - deltaT_ji) / sqrt2sigma_.array()).unaryExpr(std::ptr_fun<double, double>(erfc)) - erfctau_sigma_.array())).transpose();
 				}
 			}
 
