@@ -236,8 +236,8 @@ double PowerMethod(const Eigen::MatrixXd& M, unsigned it_max, double tol, Eigen:
     unsigned n = MM.rows();
     if(MM.isZero())
     {
-        u = Eigen::MatrixXd::Identity(n,1);
-        v = u;
+        u = Eigen::MatrixXd::Identity(M.rows(),1);
+        v = Eigen::MatrixXd::Identity(n,1);
         return 0;
     }
 
