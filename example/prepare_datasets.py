@@ -4,7 +4,7 @@ import pandas as pd
 
 
 LASTFM_FILENAME = "/Users/akhvorov/data/mlimlab/erc/datasets/lastfm-dataset-1K/" \
-                  "userid-timestamp-artid-artname-traid-traname_1M.tsv"
+                  "userid-timestamp-artid-artname-traid-traname_100000.tsv"
 SYNTHETIC_FILENAME = "data/low_rank_hawkes_sampled_entries_events"
 
 
@@ -53,22 +53,50 @@ def lastfm_prepare_data(data):
     return users_history
 
 
+def get_split_time(data, train_ratio):
+    start_times = []
+    for tss in data.values():
+        start_times += tss
+    return np.percentile(np.array(start_times), train_ratio * 100)
+
+
+def train_test_split(data, train_ratio):
+    train, test = {}, {}
+    split_time = get_split_time(data, train_ratio)
+    for key, tss in data.items():
+        # remove this!!!
+        if tss[0] >= split_time or tss[-1] <= split_time:
+            continue
+        train[key] = []
+        test[key] = []
+        for ts in tss:
+            if ts < split_time:
+                train[key].append(ts)
+            else:
+                test[key].append(ts)
+    return train, test
+
+
 def write_to_file(data, filename):
     with open(filename, 'w') as f:
         for (uid, pid), tss in data.items():
-            f.write("{}\t{}\t{}\n".format(uid, pid, " ".join(map(str, tss))))
+            if tss:
+                f.write("{}\t{}\t{}\n".format(uid, pid, " ".join(map(str, tss))))
 
 
 def lastfm_prepare():
     size = 1100 * 1000
+    train_ratio = 0.75
     raw_data = lastfm_read_raw_data(LASTFM_FILENAME, size)
     data = lastfm_prepare_data(raw_data)
-    write_to_file(data, "data/lastfm_1M")
+    train, test = train_test_split(data, train_ratio)
+    write_to_file(train, "data/lastfm/lastfm_100k_{}_train".format(str(train_ratio)))
+    write_to_file(test, "data/lastfm/lastfm_100k_{}_test".format(str(train_ratio)))
 
 
 def synt_stat():
     pairs = []
-    with open("data/lastfm_1M") as f:
+    with open("data/lastfm/lastfm_1M") as f:
         for line in f.read().split('\n'):
             info = line.split('\t')
             try:

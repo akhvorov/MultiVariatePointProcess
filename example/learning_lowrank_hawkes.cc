@@ -25,7 +25,8 @@ int main(const int argc, const char** argv)
 	LoadEigenMatrixFromTxt("data/truth-syn-Lambda0", num_users, num_items, TrueLambda0);
 	LoadEigenMatrixFromTxt("data/truth-syn-Alpha", num_users, num_items, TrueAlpha);
 	std::cout << "2. Fitting Parameters " << std::endl;
-	low_rank_hawkes.fit(data, options, TrueLambda0, TrueAlpha);
+//	low_rank_hawkes.fit(data, options, TrueLambda0, TrueAlpha);
+	low_rank_hawkes.fit(data, options);
 	
 	unsigned test_userID = 0;
 	double t = 100;
