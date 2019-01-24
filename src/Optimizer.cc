@@ -982,11 +982,14 @@ void Optimizer::ProximalFrankWolfeForLowRankHawkes(const double& gamma0, const d
 	Eigen::MatrixXd U_Z2 = U_MatrixAlpha;
 
 	std::cout << std::setw(10) << "Iteration" << "\t" << std::setw(10) << "Step Length" << "\t" << std::setw(10) << "Function Val" << std::endl;
+	int denominator = 3;
 	for(unsigned iter = 1; iter <= ini_max_iter; ++ iter)
 	{
 
 		double eta = std::min(gamma0 * (iter + 1), 10.0);
-		double delta = 2.0 / double(iter + 1);
+//		double delta = 2.0 / double(iter + 1);
+		if (iter % 20 == 0) denominator *= 3;
+		double delta = 2.0 / denominator;
 
 		Y_MatrixLambda0 = (1 - delta) * X_MatrixLambda0 + delta * U_MatrixLambda0;
 		Y_MatrixAlpha = (1 - delta) * X_MatrixAlpha + delta * U_MatrixAlpha;

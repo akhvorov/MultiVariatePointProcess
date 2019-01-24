@@ -33,27 +33,31 @@ double return_time_mae(LowRankHawkesProcess& model, std::vector<Sequence>& train
 
 int main(const int argc, const char** argv)
 {
-    unsigned num_users = 1, num_items = 514;
-//    unsigned num_users = 4, num_items = 3083;
-//    unsigned num_users = 41, num_items = 19089;
+//    unsigned num_users = 1, num_items = 514;
+//    unsigned num_users = 4, num_items = 3083;  // 100k, MAE = 1517
+//    unsigned num_users = 41, num_items = 19089;  // 1M, MAE = 960
+//    unsigned num_users = 41, num_items = 3000;  // 1M, MAE = 874 (top projects)
+//    unsigned num_users = 528, num_items = 76443;  // 10M
+//    unsigned num_users = 992, num_items = 107296;  // all
+    unsigned num_users = 992, num_items = 3000;  // all MAE = 581.221 (top projects)
     std::vector<Sequence> train_data, test_data;
     std::cout << "1. Loading " << num_users << " users " << num_items << " items" << std::endl;
-    ImportFromExistingUserItemSequences("data/lastfm/lastfm_100k_0.75_train", num_users, num_items, train_data);
+    ImportFromExistingUserItemSequences("data/lastfm/lastfm_all_1k_3k_0.75_train", num_users, num_items, train_data);
     unsigned dim = num_users * num_items;
     Eigen::VectorXd beta = Eigen::VectorXd::Constant(dim, 1.0);
     LowRankHawkesProcess low_rank_hawkes(num_users, num_items, beta);
     LowRankHawkesProcess::OPTION options;
     options.coefficients[LowRankHawkesProcess::LAMBDA0] = 1;
     options.coefficients[LowRankHawkesProcess::LAMBDA] = 1;
-    options.ini_learning_rate = 2e-5;  // 2e-5 for 100k, 8e-5 for 1M
+    options.ini_learning_rate = 5e-3;  // 2e-5 for 100k, 8e-5 for 1M
     options.ub_nuclear_lambda0 = 25;
     options.ub_nuclear_alpha = 25;
     options.rho = 1e1;
-    options.ini_max_iter = 100;
+    options.ini_max_iter = 60;
     std::cout << "2. Fitting Parameters " << std::endl;
     low_rank_hawkes.fit(train_data, options);
 
-    ImportFromExistingUserItemSequences("data/lastfm/lastfm_100k_0.75_test", num_users, num_items, test_data);
+    ImportFromExistingUserItemSequences("data/lastfm/lastfm_all_1k_3k_0.75_test", num_users, num_items, test_data);
 
     std::cout << "Fitted. Start testing" << std::endl;
     double observation_window = 5000;
