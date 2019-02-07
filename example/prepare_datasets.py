@@ -6,6 +6,7 @@ import pandas as pd
 
 LASTFM_FILENAME = "/Users/akhvorov/data/mlimlab/erc/datasets/lastfm-dataset-1K/" \
                   "userid-timestamp-artid-artname-traid-traname_all.tsv"
+#'../../erc/data/lastfm-dataset-1K/userid-timestamp-artid-artname-traid-traname_all.tsv'
 SYNTHETIC_FILENAME = "data/low_rank_hawkes_sampled_entries_events"
 
 
@@ -75,6 +76,21 @@ def filter_top(data, user_num=None, projects_num=None):
     return data
 
 
+# The libraby requires sequential project ids beginning with 1 to load the data
+def renumerate_projects(data):
+    PROJECT_ID_INDEX = 2
+    old_to_new = {}
+    c = 1
+    new_data = {}
+    for (user_id, old_id), history in data.items():
+        if old_id not in old_to_new:
+            old_to_new[old_id] = c
+            c += 1
+        new_id = old_to_new[old_id]
+        new_data[(user_id, new_id)] = history
+    return new_data, old_to_new
+
+
 def filter_random(data, user_num=None, projects_num=None):
     max_uid, max_pid = 0, 0
     for (uid, pid) in data.keys():
@@ -96,8 +112,7 @@ def filter_random(data, user_num=None, projects_num=None):
     for (uid, pid) in data_keys:
         if uid not in users_stat or pid not in projects_stat:
             del data[(uid, pid)]
-    new_data = {}
-    # for
+    data, _ = renumerate_projects(data)
     return data
 
 
