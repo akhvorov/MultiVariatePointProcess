@@ -14,13 +14,17 @@ CXXFLAGS += $(addprefix -I,$(include_dirs))
 
 CXX := g++
 
-all : build/lowrank_hawkes_lastfm build/learning_lowrank_hawkes
+all : build/lowrank_hawkes_lastfm build/learning_lowrank_hawkes build/lowrank_hawkes_toloka
 
 build/learning_lowrank_hawkes : learning_lowrank_hawkes.cc $(ptpack_lib)
 	$(dir_guard)
 	$(CXX) $(CXXFLAGS) -o $@ $^ -L$(lib_dir) -lptpack
 
 build/lowrank_hawkes_lastfm : lowrank_hawkes_lastfm.cc $(ptpack_lib)
+	$(dir_guard)
+	$(CXX) $(CXXFLAGS) -o $@ $^ -L$(lib_dir) -lptpack
+
+build/lowrank_hawkes_toloka : lowrank_hawkes_toloka.cc $(ptpack_lib)
 	$(dir_guard)
 	$(CXX) $(CXXFLAGS) -o $@ $^ -L$(lib_dir) -lptpack
 

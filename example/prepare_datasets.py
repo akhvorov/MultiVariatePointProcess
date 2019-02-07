@@ -8,8 +8,9 @@ LASTFM_FILENAME = "/Users/akhvorov/data/mlimlab/erc/datasets/lastfm-dataset-1K/"
                   "userid-timestamp-artid-artname-traid-traname_{}.tsv".format(LASTFM_SIZE)
 #'../../erc/data/lastfm-dataset-1K/userid-timestamp-artid-artname-traid-traname_all.tsv'
 SYNTHETIC_FILENAME = "data/low_rank_hawkes_sampled_entries_events"
+TOLOKA_DATE = "11_01"
 TOLOKA_FILENAME = "/Users/akhvorov/data/mlimlab/erc/datasets/toloka/" \
-                  "userid-timestamp-artid-artname-traid-traname_{}.tsv"
+                  "toloka_2018_10_01_2018_{}_salt_simple_merge".format(TOLOKA_DATE)
 
 
 def lastfm_read_raw_data(filename, size=None):
@@ -82,15 +83,15 @@ def filter_top(data, user_num=None, projects_num=None):
     users_stat = {}
     projects_stat = {}
     for (uid, pid), tts in data.items():
-        users_stat.setdefault(uid, 0)
-        projects_stat.setdefault(pid, 0)
+        if uid not in users_stat:
+            users_stat[uid] = 0
+        if pid not in projects_stat:
+            projects_stat[pid] = 0
         # maybe we should update in another way, e.g. +1
         users_stat[uid] = users_stat[uid] + len(tts)
         projects_stat[pid] = projects_stat[pid] + len(tts)
-    users_stat = [uid_value for uid_value in users_stat.items()]
-    projects_stat = [uid_value for uid_value in projects_stat.items()]
-    sorted(users_stat, key=lambda x: -x[1])
-    sorted(projects_stat, key=lambda x: -x[1])
+    sorted(list(users_stat.items()), key=lambda x: -x[1])
+    sorted(list(projects_stat.items()), key=lambda x: -x[1])
     user_num = len(users_stat) if user_num is None else user_num
     projects_num = len(projects_stat) if projects_num is None else projects_num
     users_stat = [uid for (uid, value) in users_stat][:user_num]
@@ -174,23 +175,26 @@ def train_test_split(data, train_ratio):
     split_time = get_split_time(data, train_ratio)
     for (uid, pid), tss in data.items():
         # remove this!!!
-        # if tss[0] >= split_time or tss[-1] <= split_time:
-        #     continue
-        if tss[0] < split_time:
-            train[(uid, pid)] = []
-            train_users.add(uid)
-            train_projects.add(pid)
+        if tss[0] >= split_time or tss[-1] <= split_time:
+            continue
+        # if tss[0] < split_time:
+        #     train[(uid, pid)] = []
+        #     train_users.add(uid)
+        #     train_projects.add(pid)
         # if tss[0] >= split_time and (uid not in train_users or pid in train_projects):
         #     continue
         test[(uid, pid)] = []
         train[(uid, pid)] = []
+
+        train_users.add(uid)
+        train_projects.add(pid)
 
         for ts in tss:
             if ts < split_time:
                 train[(uid, pid)].append(ts)
             else:
                 test[(uid, pid)].append(ts)
-    print("train_users", len(train_users), train_users)
+    print("train_users", len(train_users))
     print("train_projects", len(train_projects))
     return train, test
 
@@ -223,15 +227,22 @@ def lastfm_prepare():
 
 
 def toloka_prepare():
-    size = 20 * 1000 * 1000
+    size = 10 * 1000 * 1000
     train_ratio = 0.75
+    top = True
     raw_data = toloka_read_raw_data(TOLOKA_FILENAME, size)
     print(raw_data.shape)
     data = toloka_prepare_data(raw_data)
-    data = filter_random(data, 1000, 3000)
+    if top:
+        data = filter_top(data, 1000, 3000)
+    else:
+        data = filter_random(data, 1000, 3000)
     train, test = train_test_split(data, train_ratio)
-    write_to_file(train, "data/toloka/toloka_{}_1k_3k_{}_train".format(LASTFM_SIZE, train_ratio))
-    write_to_file(test, "data/toloka/toloka_{}_1k_3k_{}_test".format(LASTFM_SIZE, train_ratio))
+    users_map, projects_map = {}, {}
+    train = renumerate(train, old_to_new_users=users_map, old_to_new_projects=projects_map)
+    test = renumerate(test, old_to_new_users=users_map, old_to_new_projects=projects_map)
+    write_to_file(train, "data/toloka/toloka_{}_1k_3k_{}_train".format(TOLOKA_DATE, train_ratio))
+    write_to_file(test, "data/toloka/toloka_{}_1k_3k_{}_test".format(TOLOKA_DATE, train_ratio))
 
 
 def synt_stat():
@@ -266,8 +277,8 @@ def synt_stat():
 
 
 def main():
-    lastfm_prepare()
-    # toloka_prepare()
+    # lastfm_prepare()
+    toloka_prepare()
     # synt_stat()
 
 
