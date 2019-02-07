@@ -8,13 +8,11 @@
 #include "OgataThinning.h"
 #include "LowRankHawkesProcess.h"
 
-double return_time_mae(LowRankHawkesProcess& model, std::vector<Sequence>& train_data,
+double return_time_mae(LowRankHawkesProcess& model, std::vector<Sequence> train_data,
                        const std::vector<Sequence>& test_data, double observation_window, int num_users) {
     double error = 0.0;
     int count = 0;
     for (const Sequence& sequence : test_data) {
-        double local_error = 0.0;
-        int local_count = 0;
         Event first_event = sequence.GetEvents()[0];
         int user_id = first_event.DimentionID % num_users;
         int item_id = first_event.DimentionID / num_users;
@@ -24,8 +22,6 @@ double return_time_mae(LowRankHawkesProcess& model, std::vector<Sequence>& train
 
             error += abs(event.time - predicted_time);
             count++;
-            local_error += abs(event.time - predicted_time);
-            local_count++;
         }
     }
     return error / count;
@@ -36,13 +32,15 @@ int main(const int argc, const char** argv)
 //    unsigned num_users = 1, num_items = 514;
 //    unsigned num_users = 4, num_items = 3083;  // 100k, MAE = 1517
 //    unsigned num_users = 41, num_items = 19089;  // 1M, MAE = 960
-//    unsigned num_users = 41, num_items = 3000;  // 1M, MAE = 874 (top projects)
+//    unsigned num_users = 41, num_items = 3000;  // 1M, MAE = 874 (top projects), MAE = 861 (rand projects)
+    unsigned num_users = 33, num_items = 3000;  // 1M
 //    unsigned num_users = 528, num_items = 76443;  // 10M
 //    unsigned num_users = 992, num_items = 107296;  // all
-    unsigned num_users = 992, num_items = 3000;  // all MAE = 581.221 (top projects)
+//    unsigned num_users = 992, num_items = 3000;  // all MAE = 581.221 (top projects), MAE = 728 (rand projects)
+    std::string FILE_SIZE = "1M";
     std::vector<Sequence> train_data, test_data;
     std::cout << "1. Loading " << num_users << " users " << num_items << " items" << std::endl;
-    ImportFromExistingUserItemSequences("data/lastfm/lastfm_all_1k_3k_0.75_train", num_users, num_items, train_data);
+    ImportFromExistingUserItemSequences("data/lastfm/lastfm_top_" + FILE_SIZE + "_1k_3k_0.75_train", num_users, num_items, train_data);
     unsigned dim = num_users * num_items;
     Eigen::VectorXd beta = Eigen::VectorXd::Constant(dim, 1.0);
     LowRankHawkesProcess low_rank_hawkes(num_users, num_items, beta);
@@ -53,14 +51,14 @@ int main(const int argc, const char** argv)
     options.ub_nuclear_lambda0 = 25;
     options.ub_nuclear_alpha = 25;
     options.rho = 1e1;
-    options.ini_max_iter = 60;
+    options.ini_max_iter = 10;
     std::cout << "2. Fitting Parameters " << std::endl;
     low_rank_hawkes.fit(train_data, options);
 
-    ImportFromExistingUserItemSequences("data/lastfm/lastfm_all_1k_3k_0.75_test", num_users, num_items, test_data);
+    ImportFromExistingUserItemSequences("data/lastfm/lastfm_top_" + FILE_SIZE + "_1k_3k_0.75_test", num_users, num_items, test_data);
 
     std::cout << "Fitted. Start testing" << std::endl;
-    double observation_window = 5000;
+    double observation_window = 2000;
     std::cout << return_time_mae(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
 
 //    unsigned test_userID = 0;
