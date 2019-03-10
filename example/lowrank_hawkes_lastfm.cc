@@ -27,13 +27,32 @@ double return_time_mae(LowRankHawkesProcess& model, std::vector<Sequence> train_
     return error / count;
 }
 
+double recommendation_mar(LowRankHawkesProcess& model, std::vector<Sequence> train_data,
+                       const std::vector<Sequence>& test_data, double observation_window, int num_users) {
+//    double error = 0.0;
+//    int count = 0;
+//    for (const Sequence& sequence : test_data) {
+//        Event first_event = sequence.GetEvents()[0];
+//        int user_id = first_event.DimentionID % num_users;
+//        int item_id = first_event.DimentionID / num_users;
+//        for (const Event& event : sequence.GetEvents()) {
+//            double predicted_time = model.PredictNextEventTime(user_id, item_id, observation_window, train_data);
+//            train_data[event.SequenceID].Add(event);
+//
+//            error += abs(event.time - predicted_time);
+//            count++;
+//        }
+//    }
+//    return error / count;
+}
+
 int main(const int argc, const char** argv)
 {
 //    unsigned num_users = 1, num_items = 514;
 //    unsigned num_users = 4, num_items = 3083;  // 100k, MAE = 1517
 //    unsigned num_users = 41, num_items = 19089;  // 1M, MAE = 960
 //    unsigned num_users = 41, num_items = 3000;  // 1M, MAE = 874 (top projects), MAE = 861 (rand projects)
-    unsigned num_users = 33, num_items = 3000;  // 1M
+    unsigned num_users = 38, num_items = 3000;  // 1M, 811 (по-старому)
 //    unsigned num_users = 528, num_items = 76443;  // 10M
 //    unsigned num_users = 992, num_items = 107296;  // all
 //    unsigned num_users = 992, num_items = 3000;  // all MAE = 581.221 (top projects), MAE = 728 (rand projects)
@@ -59,7 +78,7 @@ int main(const int argc, const char** argv)
 
     std::cout << "Fitted. Start testing" << std::endl;
     double observation_window = 2000;
-    std::cout << return_time_mae(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
+    std::cout << "Test return time mae" << return_time_mae(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
 
 //    unsigned test_userID = 0;
 //    double t = 100;
