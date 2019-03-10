@@ -987,9 +987,9 @@ void Optimizer::ProximalFrankWolfeForLowRankHawkes(const double& gamma0, const d
 	{
 
 		double eta = std::min(gamma0 * (iter + 1), 10.0);
-//		double delta = 2.0 / double(iter + 1);
-		if (iter % 10 == 0) denominator *= 2.5;
-		double delta = 2.0 / denominator;
+		double delta = 1.0 / double(iter + 1);
+//		if (iter % 10 == 0) denominator *= 2.5;
+//		double delta = 2.0 / denominator;
 
 		Y_MatrixLambda0 = (1 - delta) * X_MatrixLambda0 + delta * U_MatrixLambda0;
 		Y_MatrixAlpha = (1 - delta) * X_MatrixAlpha + delta * U_MatrixAlpha;
