@@ -981,18 +981,21 @@ void Optimizer::ProximalFrankWolfeForLowRankHawkes(const double& gamma0, const d
 	Eigen::MatrixXd U_Z1 = U_MatrixLambda0;
 	Eigen::MatrixXd U_Z2 = U_MatrixAlpha;
 
-	std::cout << std::setw(10) << "Iteration" << "\t" << std::setw(10) << "Step Length" << "\t" << std::setw(10) << "Function Val" << std::endl;
+	std::cout << std::setw(10) << "Iteration" << "\t" << std::setw(10) << "Step Length" << "\t" << std::setw(10) << "Function Val" << "\t" << "Lamda0" << "\t" << "Alpha" << std::endl;
 	int denominator = 3;
+	double numerator = 1.0;
 	for(unsigned iter = 1; iter <= ini_max_iter; ++ iter)
 	{
 
 		double eta = std::min(gamma0 * (iter + 1), 10.0);
-		double delta = 1.0 / double(iter + 1);
-//		if (iter % 10 == 0) denominator *= 2.5;
+		double delta = numerator / double(iter + 1);
+//		double delta = numerator / double(sqrt(iter + 1));
+//		if (iter % 300 == 0) numerator /= 1.3;
+//		if (iter % 100 == 0) denominator *= 1.5;
 //		double delta = 2.0 / denominator;
 
 //		double delta = 2.0 / double(iter + 1);
-//		if (iter % 4 == 0) denominator *= 1.5;
+//		if (iter % 3 == 0) denominator *= 1.5;
 //		double delta = 2.0 / denominator;
 
 		Y_MatrixLambda0 = (1 - delta) * X_MatrixLambda0 + delta * U_MatrixLambda0;
@@ -1039,6 +1042,10 @@ void Optimizer::ProximalFrankWolfeForLowRankHawkes(const double& gamma0, const d
 		MatrixLambda0_new = X_MatrixLambda0;
 		MatrixAlpha_new = X_MatrixAlpha;
 
+//		Eigen::VectorXd Lambda0 = process_->GetParameters().segment(0, 1);
+//		Eigen::VectorXd Alpha = process_->GetParameters().segment(1, 1);
+//		std::cout << std::setw(10) << iter << "\t" << std::setw(10) << delta << "\t" << std::setw(10) << f_new << "\t"
+//				  << Lambda0 << "\t" << Alpha << std::endl;
 		std::cout << std::setw(10) << iter << "\t" << std::setw(10) << delta << "\t" << std::setw(10) << f_new << std::endl;
 	}
 }
