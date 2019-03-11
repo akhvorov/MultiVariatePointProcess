@@ -27,8 +27,22 @@ double return_time_mae(LowRankHawkesProcess& model, std::vector<Sequence> train_
     return error / count;
 }
 
-double recommendation_mar(LowRankHawkesProcess& model, std::vector<Sequence> train_data,
-                       const std::vector<Sequence>& test_data, double observation_window, int num_users) {
+//double unseen_rec(LowRankHawkesProcess& model, std::vector<Sequence> train_data,
+//                       const std::vector<Sequence>& test_data, double observation_window, int num_users) {
+//    std::unordered_map<int, std::unordered_set<int>> all_unseen_projects;
+//    std::unordered_map<int, std::unordered_set<int>> will_seen_projects;
+//    for (const Sequence& sequence : test_data) {
+//        Event first_event = sequence.GetEvents()[0];
+//        int user_id = first_event.DimentionID % num_users;
+//        int item_id = first_event.DimentionID / num_users;
+//        will_seen_projects[user_id].insert(item_id);
+//    }
+//    for (const Sequence& sequence : train_data) {
+//        Event first_event = sequence.GetEvents()[0];
+//        int user_id = first_event.DimentionID % num_users;
+//        int item_id = first_event.DimentionID / num_users;
+//        will_seen_projects[user_id].insert(item_id);
+//    }
 //    double error = 0.0;
 //    int count = 0;
 //    for (const Sequence& sequence : test_data) {
@@ -44,10 +58,9 @@ double recommendation_mar(LowRankHawkesProcess& model, std::vector<Sequence> tra
 //        }
 //    }
 //    return error / count;
-}
+//}
 
-int main(const int argc, const char** argv)
-{
+int main(const int argc, const char** argv) {
 //    unsigned num_users = 1, num_items = 514;
 //    unsigned num_users = 4, num_items = 3083;  // 100k, MAE = 1517
 //    unsigned num_users = 41, num_items = 19089;  // 1M, MAE = 960
@@ -70,7 +83,7 @@ int main(const int argc, const char** argv)
     options.ub_nuclear_lambda0 = 25;
     options.ub_nuclear_alpha = 25;
     options.rho = 1e1;
-    options.ini_max_iter = 10;
+    options.ini_max_iter = 30;
     std::cout << "2. Fitting Parameters " << std::endl;
     low_rank_hawkes.fit(train_data, options);
 
@@ -78,7 +91,7 @@ int main(const int argc, const char** argv)
 
     std::cout << "Fitted. Start testing" << std::endl;
     double observation_window = 2000;
-    std::cout << "Test return time mae" << return_time_mae(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
+    std::cout << "Test return time mae " << return_time_mae(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
 
 //    unsigned test_userID = 0;
 //    double t = 100;

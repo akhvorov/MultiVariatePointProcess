@@ -30,7 +30,7 @@ double return_time_mae(LowRankHawkesProcess& model, std::vector<Sequence> train_
 int main(const int argc, const char** argv)
 {
     unsigned num_users = 230, num_items = 141; // 2 days, 8
-    unsigned num_users = 143, num_items = 231; // 30 days, 65
+//    unsigned num_users = 143, num_items = 231; // 30 days, 65
     std::string DATE = "11_01";
     std::vector<Sequence> train_data, test_data;
     std::cout << "1. Loading " << num_users << " users " << num_items << " items" << std::endl;
