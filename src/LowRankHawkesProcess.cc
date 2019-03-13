@@ -180,14 +180,14 @@ void LowRankHawkesProcess::ExpectationHandler::operator()(const Eigen::VectorXd&
 	
 	unsigned num_elements = t.size();
 	y = Eigen::VectorXd::Zero(num_elements);
-	Eigen::VectorXd expsum = Eigen::VectorXd::Zero(events.size());
-
+    double weight = 1.;
 	for(unsigned i = 1; i < events.size(); ++ i)
 	{
-		expsum(i) = exp(-Beta(uid_, itemid_) * (events[i].time - events[i-1].time)) * (1 + expsum(i - 1));
+		weight = 1 + exp(-Beta(uid_, itemid_) * (events[i].time - events[i-1].time)) * weight;
 	}
 
-	y = (Lambda0(uid_, itemid_) + A(uid_, itemid_) * (1 + expsum(expsum.size() - 1)) * (-Beta(uid_, itemid_) * t.array()).exp()) * (-Lambda0(uid_, itemid_) * t.array() - (A(uid_, itemid_) / Beta(uid_, itemid_)) * (1 + expsum(expsum.size() - 1)) * (1 - (-Beta(uid_, itemid_) * t.array()).exp())).exp() * t.array();
+	auto beta_t = (-Beta(uid_, itemid_) * t.array()).exp();
+    y = (Lambda0(uid_, itemid_) + A(uid_, itemid_) * weight * beta_t) * (-Lambda0(uid_, itemid_) * t.array() - (A(uid_, itemid_) / Beta(uid_, itemid_)) * weight * (1 - beta_t)).exp() * t.array();
 
 }
 

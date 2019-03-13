@@ -4,7 +4,7 @@
 #include "OgataThinning.h"
 #include "LowRankHawkesProcess.h"
 
-const double OBSERVATION_WINDOW = 200000;
+const double OBSERVATION_WINDOW = 10000;
 const unsigned NUM_USERS = 1;
 const unsigned NUM_ITEMS = 1;
 const unsigned DIM = NUM_USERS * NUM_ITEMS;
@@ -61,13 +61,12 @@ void test_short() {
     int diff = 5;
     auto data_train = make_seq(0, diff, 2);
     auto data_test = make_seq(2 * diff, diff, 2);
-
-    Eigen::VectorXd beta = Eigen::VectorXd::Constant(DIM, 1.0);
+    Eigen::VectorXd beta = Eigen::VectorXd::Constant(DIM, 1e-2);
     LowRankHawkesProcess low_rank_hawkes(NUM_USERS, NUM_ITEMS, beta);
     LowRankHawkesProcess::OPTION options;
     options.coefficients[LowRankHawkesProcess::LAMBDA0] = 1;
     options.coefficients[LowRankHawkesProcess::LAMBDA] = 1;
-    options.ini_learning_rate = 1e-1;  // 2e-5 for 100k, 8e-5 for 1M
+    options.ini_learning_rate = 7e-10;  // 2e-5 for 100k, 8e-5 for 1M
     options.ub_nuclear_lambda0 = 2;
     options.ub_nuclear_alpha = 2;
     options.rho = 1e1;
@@ -94,11 +93,11 @@ void test_long() {
     options.ub_nuclear_alpha = 20000;
     options.rho = 1e1;
     options.ini_max_iter = 100000;
-//    std::cout << low_rank_hawkes.GetParameters();
     low_rank_hawkes.fit(data_train, options);
     std::cout << low_rank_hawkes.GetParameters();
 
     std::cout << return_time_mae(low_rank_hawkes, data_train, data_test, OBSERVATION_WINDOW, NUM_USERS) << std::endl;
+//    std::cout << low_rank_hawkes.GetParameters() << std::endl;
 }
 
 int main(const int argc, const char** argv)
