@@ -1,1 +1,4 @@
 build/
+dox
+.idea
+example/data/lastfm/

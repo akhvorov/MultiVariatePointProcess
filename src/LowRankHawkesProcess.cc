@@ -193,7 +193,9 @@ void LowRankHawkesProcess::ExpectationHandler::operator()(const Eigen::VectorXd&
 
 double LowRankHawkesProcess::PredictNextEventTime(unsigned uid, unsigned itemid, double T, const std::vector<Sequence>& data)
 {
-
+//    std::cout << "FOOOOOOO\n";
+//    Eigen::Map<Eigen::MatrixXd> Lambda0 = Eigen::Map<Eigen::MatrixXd>(parameters_.segment(0, num_dims_).data(), num_rows_, num_cols_);
+//    std::cout << "\n" << Lambda0(uid, itemid) << "\n";
 	assert((uid >= 0) && (uid < num_rows_) && (itemid >= 0) && (itemid < num_cols_));
 	unsigned i, j;
 	for(unsigned c = 0; c < data.size(); ++ c)
@@ -206,7 +208,7 @@ double LowRankHawkesProcess::PredictNextEventTime(unsigned uid, unsigned itemid,
 		{
 			ExpectationHandler handler(uid, itemid, data[c], *this);
 
-			return seq[seq.size() - 1].time + SimpsonIntegral38(handler, 0, 100, 9000);
+			return seq[seq.size() - 1].time + SimpsonIntegral38(handler, 0, T, 90000);
 		}
 	}
 

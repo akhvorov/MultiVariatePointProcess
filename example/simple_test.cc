@@ -4,7 +4,7 @@
 #include "OgataThinning.h"
 #include "LowRankHawkesProcess.h"
 
-const double OBSERVATION_WINDOW = 2000;
+const double OBSERVATION_WINDOW = 200000;
 const unsigned NUM_USERS = 1;
 const unsigned NUM_ITEMS = 1;
 const unsigned DIM = NUM_USERS * NUM_ITEMS;
@@ -48,6 +48,15 @@ std::vector<Sequence> make_seq(double start, double step, int n) {
     return std::move(std::vector<Sequence> { seq });
 }
 
+void show_seq(Sequence &seq) {
+    int N = 10;
+    for (int i = 0; i < N; ++i) {
+        Event e = seq.GetEvents()[i];
+        std::cout << e.EventID << ' ' << e.SequenceID << ' ' << e.DimentionID << ' '
+                << e.time << ' ' << e.marker << std::endl;
+    }
+}
+
 void test_short() {
     int diff = 5;
     auto data_train = make_seq(0, diff, 2);
@@ -69,22 +78,25 @@ void test_short() {
 }
 
 void test_long() {
-    int diff = 10;
-    int size = 20;
-    auto data_train = make_seq(0, diff, size);
-    auto data_test = make_seq(size * diff, diff, size);
+    double diff = 250;
+    int train_size = 3000;
+    int test_size = 40;
+    auto data_train = make_seq(0, diff, train_size);
+    auto data_test = make_seq(train_size * diff, diff, test_size);
 
-    Eigen::VectorXd beta = Eigen::VectorXd::Constant(DIM, 1.0);
+    Eigen::VectorXd beta = Eigen::VectorXd::Constant(DIM, 1000);
     LowRankHawkesProcess low_rank_hawkes(NUM_USERS, NUM_ITEMS, beta);
     LowRankHawkesProcess::OPTION options;
-    options.coefficients[LowRankHawkesProcess::LAMBDA0] = 1;
-    options.coefficients[LowRankHawkesProcess::LAMBDA] = 1;
-    options.ini_learning_rate = 5e-8;  // 2e-5 for 100k, 8e-5 for 1M
-    options.ub_nuclear_lambda0 = 25;
-    options.ub_nuclear_alpha = 25;
+    options.coefficients[LowRankHawkesProcess::LAMBDA0] = 1e-3;
+    options.coefficients[LowRankHawkesProcess::LAMBDA] = 1e-3;
+    options.ini_learning_rate = 1e-6;  // 2e-5 for 100k, 8e-5 for 1M
+    options.ub_nuclear_lambda0 = 20000;
+    options.ub_nuclear_alpha = 20000;
     options.rho = 1e1;
-    options.ini_max_iter = 10;
+    options.ini_max_iter = 100000;
+//    std::cout << low_rank_hawkes.GetParameters();
     low_rank_hawkes.fit(data_train, options);
+    std::cout << low_rank_hawkes.GetParameters();
 
     std::cout << return_time_mae(low_rank_hawkes, data_train, data_test, OBSERVATION_WINDOW, NUM_USERS) << std::endl;
 }
