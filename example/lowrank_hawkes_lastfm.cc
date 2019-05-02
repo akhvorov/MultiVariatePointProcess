@@ -16,13 +16,20 @@ double return_time_mae(LowRankHawkesProcess& model, std::vector<Sequence> train_
         Event first_event = sequence.GetEvents()[0];
         int user_id = first_event.DimentionID % num_users;
         int item_id = first_event.DimentionID / num_users;
+        double cur_error = 0.0;
+        int cur_count = 0;
         for (const Event& event : sequence.GetEvents()) {
             double predicted_time = model.PredictNextEventTime(user_id, item_id, observation_window, train_data);
             train_data[event.SequenceID].Add(event);
 
-            error += abs(event.time - predicted_time);
-            count++;
+            cur_error += abs(event.time - predicted_time);
+            cur_count++;
         }
+//        if (cur_error / cur_count < 250000) {
+            error += cur_error;
+            count += cur_count;
+//        }
+//        std::cout << (int)(cur_error / cur_count) << ' ' << sequence.GetEvents().size() << ' '  << user_id << ' ' << item_id << std::endl;
     }
     return error / count;
 }
@@ -60,10 +67,19 @@ double return_time_mae(LowRankHawkesProcess& model, std::vector<Sequence> train_
 //    return error / count;
 //}
 
+void show_seq(Sequence &seq) {
+    int N = 10;
+    for (int i = 0; i < N; ++i) {
+        Event e = seq.GetEvents()[i];
+        std::cout << e.EventID << ' ' << e.SequenceID << ' ' << e.DimentionID << ' '
+                  << e.time << ' ' << e.marker << std::endl;
+    }
+}
+
 int main(const int argc, const char** argv) {
 //    unsigned num_users = 1, num_items = 514;
 //    unsigned num_users = 4, num_items = 3083;  // 100k, MAE = 1517
-    unsigned num_users = 4, num_items = 620;  // 100k (1000, 1000)
+//    unsigned num_users = 4, num_items = 620;  // 100k (1000, 1000)
 //    unsigned num_users = 41, num_items = 19089;  // 1M, MAE = 960
 //    unsigned num_users = 41, num_items = 3000;  // 1M, MAE = 874 (top projects), MAE = 861 (rand projects)
 //    unsigned num_users = 38, num_items = 3000;  // 1M, 811 (по-старому)
@@ -71,13 +87,21 @@ int main(const int argc, const char** argv) {
 //    unsigned num_users = 528, num_items = 76443;  // 10M
 //    unsigned num_users = 992, num_items = 107296;  // all
 //    unsigned num_users = 992, num_items = 3000;  // all MAE = 581.221 (top projects), MAE = 728 (rand projects)
-    std::string FILE_SIZE = "100000";
-    std::string PROJECTS_NUM = "1k";
+    unsigned num_users = 35, num_items = 2481;
+//    std::string FILE_SIZE = "_all";
+    std::string FILE_SIZE = "_1000000";
+    std::string PROJECTS_NUM = "_1k";
+    std::string ITEMS_NUM = "_1k";
+    std::string FILENAME_PREFIX = "data/lastfm/lastfm_top";
+    std::string TRAIN_FILENAME = FILENAME_PREFIX + FILE_SIZE + PROJECTS_NUM + ITEMS_NUM + "_0.75_train";
+    std::string TEST_FILENAME = FILENAME_PREFIX + FILE_SIZE + PROJECTS_NUM + ITEMS_NUM + "_0.75_test";
+
     std::vector<Sequence> train_data, test_data;
     std::cout << "1. Loading " << num_users << " users " << num_items << " items" << std::endl;
-    ImportFromExistingUserItemSequences("data/lastfm/lastfm_top_" + FILE_SIZE + "_1k_" + PROJECTS_NUM + "_0.75_train", num_users, num_items, train_data);
+    ImportFromExistingUserItemSequences(TRAIN_FILENAME, num_users, num_items, train_data);
+
     unsigned dim = num_users * num_items;
-    Eigen::VectorXd beta = Eigen::VectorXd::Constant(dim, 1.0);
+    Eigen::VectorXd beta = Eigen::VectorXd::Constant(dim, 1);
     LowRankHawkesProcess low_rank_hawkes(num_users, num_items, beta);
     LowRankHawkesProcess::OPTION options;
     options.coefficients[LowRankHawkesProcess::LAMBDA0] = 1;
@@ -86,11 +110,11 @@ int main(const int argc, const char** argv) {
     options.ub_nuclear_lambda0 = 25;
     options.ub_nuclear_alpha = 25;
     options.rho = 1e1;
-    options.ini_max_iter = 50;
+    options.ini_max_iter = 300;
     std::cout << "2. Fitting Parameters " << std::endl;
     low_rank_hawkes.fit(train_data, options);
 
-    ImportFromExistingUserItemSequences("data/lastfm/lastfm_top_" + FILE_SIZE + "_1k_" + PROJECTS_NUM + "_0.75_test", num_users, num_items, test_data);
+    ImportFromExistingUserItemSequences(TEST_FILENAME, num_users, num_items, test_data);
 
     std::cout << "Fitted. Start testing" << std::endl;
     double observation_window = 2000;

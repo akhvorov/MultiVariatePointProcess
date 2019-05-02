@@ -175,6 +175,9 @@ void ImportFromExistingUserItemSequences(const std::string& filename, const unsi
         std::vector<std::string> parts = SeperateLineWordsVector(str, "\t");
         unsigned i = atoi(parts[0].c_str()) - 1;
         unsigned j = atoi(parts[1].c_str()) - 1;
+        if (i >= num_users || j >= num_items) {
+            continue;
+        }
         unsigned dim_id = i + j * num_users;
 
         std::vector<std::string> timings = SeperateLineWordsVector(parts[2], " ");
