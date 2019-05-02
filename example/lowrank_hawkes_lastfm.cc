@@ -89,14 +89,19 @@ int main(const int argc, const char** argv) {
 //    unsigned num_users = 992, num_items = 3000;  // all MAE = 581.221 (top projects), MAE = 728 (rand projects)
     unsigned num_users = 35, num_items = 2481;
 //    std::string FILE_SIZE = "_all";
-    std::string FILE_SIZE = "_1000000";
-    std::string PROJECTS_NUM = "_1k";
-    std::string ITEMS_NUM = "_1k";
-    std::string FILENAME_PREFIX = "data/lastfm/lastfm_top";
-    std::string TRAIN_FILENAME = FILENAME_PREFIX + FILE_SIZE + PROJECTS_NUM + ITEMS_NUM + "_0.75_train";
-    std::string TEST_FILENAME = FILENAME_PREFIX + FILE_SIZE + PROJECTS_NUM + ITEMS_NUM + "_0.75_test";
+    std::string FILE_SIZE = "2000000";
+    std::string USERS_NUM = "1000";
+    std::string ITEMS_NUM = "1000";
+    std::string DATA_FORMAT = "toloka";
+    std::string FILTRATION_TYPE = "top";
+    std::string FOLDER = "data/";
+    std::string FILENAME_PREFIX = FOLDER + DATA_FORMAT + "/"
+            + DATA_FORMAT + "_" + FILTRATION_TYPE + "_" + FILE_SIZE + "_" + USERS_NUM + "_" + ITEMS_NUM;
+    std::string TRAIN_FILENAME = FILENAME_PREFIX + "_0.75_train";
+    std::string TEST_FILENAME = FILENAME_PREFIX + "_0.75_test";
 
     std::vector<Sequence> train_data, test_data;
+    std::cout << "Using path:" << FILENAME_PREFIX << std::endl;
     std::cout << "1. Loading " << num_users << " users " << num_items << " items" << std::endl;
     ImportFromExistingUserItemSequences(TRAIN_FILENAME, num_users, num_items, train_data);
 

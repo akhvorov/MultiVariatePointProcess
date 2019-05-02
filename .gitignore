@@ -2,3 +2,4 @@ build/
 dox
 .idea
 example/data/lastfm/
+example/data/toloka/
