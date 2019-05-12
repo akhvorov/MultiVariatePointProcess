@@ -3,12 +3,12 @@ import random
 import numpy as np
 import pandas as pd
 
-from collections import namedtuple
+from collections import namedtuple, Counter
 
-LASTFM_SIZE = "100000"
-LASTFM_FILENAME = "/Users/akhvorov/data/mlimlab/erc/datasets/lastfm-dataset-1K/" \
-                  "userid-timestamp-artid-artname-traid-traname_{}.tsv".format(LASTFM_SIZE)
-#'../../erc/data/lastfm-dataset-1K/userid-timestamp-artid-artname-traid-traname_all.tsv'
+
+# LASTFM_FILENAME = "/Users/akhvorov/data/mlimlab/erc/datasets/lastfm-dataset-1K/" \
+#                   "userid-timestamp-artid-artname-traid-traname_{}.tsv".format(LASTFM_SIZE)
+LASTFM_FILENAME = '../../erc/data/lastfm-dataset-1K/userid-timestamp-artid-artname-traid-traname.tsv'
 # SYNTHETIC_FILENAME = "data/low_rank_hawkes_sampled_entries_events"
 # TOLOKA_DATE = "11_01"
 # TOLOKA_FILENAME = "/Users/akhvorov/data/mlimlab/erc/datasets/toloka/" \
@@ -23,29 +23,39 @@ def lastfm_read_raw_data(filename, size=None):
 
 
 def lastfm_raw_to_session(raw):
-    user_id = raw[1]
-    ts = raw[2]
-    project_id = raw[4]
+    user_id = raw[0]
+    ts = raw[1]
+    project_id = raw[2]
     start_ts = ts / (60 * 60)
     return Event(user_id, project_id, start_ts)
 
 
+MAX_SESSION_LENGTH = .5
+
+
 def lastfm_prepare_data(data):
-    data[:, 2] = np.array(list(map(lambda x: time.mktime(time.strptime(x, "%Y-%m-%dT%H:%M:%SZ")), data[:, 2])))
-    data = data[np.argsort(data[:, 2])]
-    print("Max time delta =", np.max(data[:, 2]) - np.min(data[:, 2]))
+    data[:, 1] = np.array(list(map(lambda x: time.mktime(time.strptime(x, "%Y-%m-%dT%H:%M:%SZ")), data[:, 1])))
+    data = data[np.argsort(data[:, 1])]
+    data[:, 1] = data[:, 1] - data[0, 1]
+    print("Max time delta =", np.max(data[:, 1]) - np.min(data[:, 1]))
     events = []
     users_set = set()
     projects_set = set()
-    last_session = None
+    #last_session = None
+    last_sessions = {}
     for val in data:
         session = lastfm_raw_to_session(val)
         users_set.add(session.uid)
         projects_set.add(session.pid)
-        if last_session is not None and last_session.pid == session.pid:
-            continue
+        # if session.uid in last_sessions and session.pid == last_sessions[session.uid].pid:
+        #     # and session.start_ts < last_sessions[session.uid].start_ts + MAX_SESSION_LENGTH:
+        #     last_sessions[session.uid] = session
+        #     continue
+        # last_sessions[session.uid] = session
+        #if last_session is not None and last_session.pid == session.pid and last_session.uid == session.uid:
+        #    continue
         events.append(session)
-        last_session = session
+        #last_session = session
     print("Read |Events| = {}, |users| = {}, |projects| = {}".format(len(events), len(users_set), len(projects_set)))
     return events
 
@@ -117,6 +127,8 @@ def top_data(data, key):
         count_stat[key(event)] += 1
     count_stat = list(count_stat.items())
     count_stat = sorted(count_stat, key=lambda x: -x[1])
+    if len(count_stat) < 50:
+        print(count_stat)
     return [key for key, value in count_stat]
 
 
@@ -145,14 +157,14 @@ def select_users_and_projects(data, top=False, users_num=None, projects_num=None
 
 def filter_data(data, users, projects):
     new_data = []
-    new_users = set()
-    new_projects = set()
+    # new_users = set()
+    # new_projects = set()
     for event in data:
         if event.uid in users and event.pid in projects:
             new_data.append(event)
-            new_users.add(event.uid)
-            new_projects.add(event.pid)
-    print(f"After filtering: |Events| = {len(new_data)}, |users| = {len(new_users)}, |projects| = {len(new_projects)}")
+            # new_users.add(event.uid)
+            # new_projects.add(event.pid)
+    #print(f"After filtering: |Events| = {len(new_data)}, |users| = {len(new_users)}, |projects| = {len(new_projects)}")
     return new_data
 
 
@@ -167,13 +179,17 @@ def train_test_split(data, train_ratio):
     train, test = [], []
     data = sorted(data, key=lambda s: s.start_ts)
     split_time = get_split_time(data, train_ratio)
-    seen_projects = set()
-    seen_users = set()
+    print('sp', split_time)
+    # seen_projects = set()
+    # seen_users = set()
+    seen_pairs = set()
     for event in data:
-        if event.start_ts > split_time and (event.pid not in seen_projects or event.uid not in seen_users):
+        # if event.start_ts > split_time and (event.pid not in seen_projects or event.uid not in seen_users):
+        if event.start_ts > split_time and ((event.uid, event.pid) not in seen_pairs):
             continue
-        seen_projects.add(event.pid)
-        seen_users.add(event.uid)
+        # seen_projects.add(event.pid)
+        # seen_users.add(event.uid)
+        seen_pairs.add((event.uid, event.pid))
         if event.start_ts < split_time:
             train.append(event)
         else:
@@ -182,13 +198,17 @@ def train_test_split(data, train_ratio):
 
 
 def split_and_filter_data(data, train_ratio, top_items, users_num, projects_num):
+    selected_users, selected_projects = select_users_and_projects(
+        data, top=top_items, users_num=users_num, projects_num=projects_num)
+    data = filter_data(data, users=selected_users, projects=selected_projects)
     X_tr, X_te = train_test_split(data, train_ratio)
-    selected_users, selected_projects = select_users_and_projects(X_tr, top=top_items, users_num=users_num,
-                                                                  projects_num=projects_num)
     new_users = selected_users
     new_projects = selected_projects
     first = True
-    # X_tr = filter_data(X_tr, users=selected_users, projects=selected_projects)
+    X_tr = filter_data(X_tr, users=new_users, projects=new_projects)
+    X_te = filter_data(X_te, users=new_users, projects=new_projects)
+
+    X_tr = filter_data(X_tr, users=selected_users, projects=selected_projects)
     while first or new_users != selected_users or new_projects != selected_projects:
         first = False
         X_tr = filter_data(X_tr, users=new_users, projects=new_projects)
@@ -249,20 +269,56 @@ def write_to_file(data, filename):
                 f.write("{}\t{}\t{}\n".format(uid, pid, " ".join(map(str, tss))))
 
 
+def pairwise_tts(data, train_ratio):
+    train, test = {}, {}
+    for pair, events in data.items():
+        train_len = int(len(events) * train_ratio)
+        if train_len >= 2:
+            train[pair] = events[:train_len]
+            test[pair] = events[train_len:]
+    return train, test
+
+
+def cut_users_items(data, max_users, max_items):
+    users_mentions, items_mentions = Counter(), Counter()
+    for (user_id, item_id), history in data.items():
+        users_mentions.update({user_id: len(history)})
+        items_mentions.update({item_id: len(history)})
+    chosen_users = {user_id for user_id, _ in users_mentions.most_common()[:max_users]}
+    chosen_items = {item_id for item_id, _ in items_mentions.most_common()[:max_items]}
+    return {
+        (user_id, item_id): history
+        for (user_id, item_id), history in data.items()
+        if user_id in chosen_users and item_id in chosen_items
+    }
+
+
 def lastfm_prepare():
-    size = 20 * 1000 * 1000
+    size = 1000 * 1000
     train_ratio = 0.75
-    top = True
+    users_num = 1000
+    items_num = 3000
+    pairwise_split = False
+    filtration_type = 'top'  # Can also be 'random'
     raw_data = lastfm_read_raw_data(LASTFM_FILENAME, size)
     print(raw_data.shape)
     data = lastfm_prepare_data(raw_data)
-    train, test = split_and_filter_data(data, train_ratio, top, 1000, 1000)
     users_map, projects_map = {}, {}
-    train = renumerate(convert_to_dict(train), old_to_new_users=users_map, old_to_new_projects=projects_map)
-    test = renumerate(convert_to_dict(test), old_to_new_users=users_map, old_to_new_projects=projects_map)
+    if pairwise_split:
+        data = convert_to_dict(data)
+        data = cut_users_items(data, users_num, items_num)
+        train, test = pairwise_tts(data, train_ratio)
+        train = renumerate(train, old_to_new_users=users_map, old_to_new_projects=projects_map)
+        test = renumerate(test, old_to_new_users=users_map, old_to_new_projects=projects_map)
+    else:
+        print('DL', len(data))
+        train, test = split_and_filter_data(data, train_ratio, filtration_type == 'top', users_num, items_num)
+        print(len(train), len(test))
+        train = renumerate(convert_to_dict(train), old_to_new_users=users_map, old_to_new_projects=projects_map)
+        test = renumerate(convert_to_dict(test), old_to_new_users=users_map, old_to_new_projects=projects_map)
     print("|Users| = {}, |project| = {}".format(len(users_map), len(projects_map)))
-    write_to_file(train, "data/lastfm/lastfm_{}_{}_1k_1k_{}_train".format("top" if top else "rand", LASTFM_SIZE, train_ratio))
-    write_to_file(test, "data/lastfm/lastfm_{}_{}_1k_1k_{}_test".format("top" if top else "rand", LASTFM_SIZE, train_ratio))
+    write_to_file(train, f"data/lastfm/lastfm_{filtration_type}_{size}_1k_1k_{train_ratio}_train")
+    write_to_file(test, f"data/lastfm/lastfm_{filtration_type}_{size}_1k_1k_{train_ratio}_test")
 
 
 # def toloka_prepare():

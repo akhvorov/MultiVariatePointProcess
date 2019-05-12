@@ -8,8 +8,8 @@
 #include "OgataThinning.h"
 #include "LowRankHawkesProcess.h"
 
-double return_time_mae(LowRankHawkesProcess& model, std::vector<Sequence> train_data,
-                       const std::vector<Sequence>& test_data, double observation_window, int num_users) {
+double mae(LowRankHawkesProcess &model, std::vector <Sequence> train_data,
+           const std::vector <Sequence> &test_data, double observation_window, int num_users) {
     double error = 0.0;
     int count = 0;
     for (const Sequence& sequence : test_data) {
@@ -21,17 +21,36 @@ double return_time_mae(LowRankHawkesProcess& model, std::vector<Sequence> train_
         for (const Event& event : sequence.GetEvents()) {
             double predicted_time = model.PredictNextEventTime(user_id, item_id, observation_window, train_data);
             train_data[event.SequenceID].Add(event);
-
-            cur_error += abs(event.time - predicted_time);
-            cur_count++;
+            error += abs(event.time - predicted_time);
+            count++;
         }
-//        if (cur_error / cur_count < 250000) {
-            error += cur_error;
-            count += cur_count;
-//        }
-//        std::cout << (int)(cur_error / cur_count) << ' ' << sequence.GetEvents().size() << ' '  << user_id << ' ' << item_id << std::endl;
     }
     return error / count;
+}
+
+double spu(LowRankHawkesProcess& model, std::vector<Sequence> train_data,
+           const std::vector<Sequence>& test_data, double observation_window, int num_users) {
+    double total_diff = 0.;
+    long count = 0;
+    for (const Sequence& sequence : test_data) {
+        Event first_event = sequence.GetEvents()[0];
+        int user_id = first_event.DimentionID % num_users;
+        int item_id = first_event.DimentionID / num_users;
+        double prev_time = -1;
+        for (const Event& event : sequence.GetEvents()) {
+            if (prev_time >= 0) {
+                double predicted_time = model.PredictNextEventTime(user_id, item_id, observation_window, train_data);
+                double delta_predicted = predicted_time - prev_time;
+                double delta_real = event.time - prev_time;
+                std::cerr << delta_predicted << " " << delta_real << std::endl;
+                total_diff += abs(1 / delta_predicted - 1 / delta_real);
+                ++count;
+            }
+            train_data[event.SequenceID].Add(event);
+            prev_time = event.time;
+        }
+    }
+    return total_diff / count;
 }
 
 //double unseen_rec(LowRankHawkesProcess& model, std::vector<Sequence> train_data,
@@ -89,7 +108,7 @@ int main(const int argc, const char** argv) {
 //    unsigned num_users = 992, num_items = 3000;  // all MAE = 581.221 (top projects), MAE = 728 (rand projects)
     unsigned num_users = 35, num_items = 2481;
 //    std::string FILE_SIZE = "_all";
-    std::string FILE_SIZE = "2000000";
+    std::string FILE_SIZE = "5000000";
     std::string USERS_NUM = "1000";
     std::string ITEMS_NUM = "1000";
     std::string DATA_FORMAT = "toloka";
@@ -123,7 +142,10 @@ int main(const int argc, const char** argv) {
 
     std::cout << "Fitted. Start testing" << std::endl;
     double observation_window = 2000;
-    std::cout << "Test return time mae " << return_time_mae(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
+    std::cout << "Test return time mae: " <<
+        mae(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
+    std::cout << "Test SPU: " <<
+        spu(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
 
 //    unsigned test_userID = 0;
 //    double t = 100;

@@ -3,3 +3,5 @@ dox
 .idea
 example/data/lastfm/
 example/data/toloka/
+**/*.pyc
+**/*.ipynb
