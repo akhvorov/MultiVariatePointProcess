@@ -73,8 +73,8 @@ double mae_user(LowRankHawkesProcess &model, std::unordered_map<int, Sequence> &
         std::cout << "Step " << step++ << std::endl;
         int user_id = it->first;
         for (const Event& event : it->second.GetEvents()) {
-            double predicted_time = predict_user_next(model, train_data, observation_window,
-                    num_users, user_id, user_items);
+            double predicted_time =
+                    predict_user_next(model, train_data, observation_window, num_users, user_id, user_items);
             train_data[event.SequenceID].Add(event);
             error += abs(event.time - predicted_time);
             count++;
@@ -106,6 +106,36 @@ double spu_user(LowRankHawkesProcess &model, std::unordered_map<int, Sequence> &
         }
     }
     return total_diff / count;
+}
+
+std::pair<double, double> user_metrics(LowRankHawkesProcess &model, std::unordered_map<int, Sequence> &user_sequences,
+                    std::vector <Sequence> train_data, std::unordered_map<int, std::vector<int>> &user_items,
+                    double observation_window, int num_users) {
+    double total_spu_diff = 0.;
+    double error = 0.;
+    long count_spu = 0;
+    long count_mae = 0;
+    int step = 1;
+    for (auto it = user_sequences.begin(); it != user_sequences.end(); ++it) {
+        std::cout << "Step " << step++ << " of " << user_sequences.size() << std::endl;
+        int user_id = it->first;
+        double prev_time = -1;
+        for (const Event& event : it->second.GetEvents()) {
+            double predicted_time =
+                    predict_user_next(model, train_data, observation_window, num_users, user_id, user_items);
+            error += abs(event.time - predicted_time);
+            count_mae++;
+            if (prev_time >= 0) {
+                double delta_predicted = predicted_time - prev_time;
+                double delta_real = event.time - prev_time;
+                total_spu_diff += abs(1 / delta_real - 1 / delta_predicted);
+                count_spu++;
+            }
+            train_data[event.SequenceID].Add(event);
+            prev_time = event.time;
+        }
+    }
+    return std::make_pair(error / count_mae, total_spu_diff / count_spu);
 }
 
 //double unseen_rec(LowRankHawkesProcess& model, std::vector<Sequence> train_data,
@@ -177,9 +207,9 @@ int main(const int argc, const char** argv) {
 //    unsigned num_users = 528, num_items = 76443;  // 10M
 //    unsigned num_users = 992, num_items = 107296;  // all
 //    unsigned num_users = 992, num_items = 3000;  // all MAE = 581.221 (top projects), MAE = 728 (rand projects)
-    unsigned num_users = 2, num_items = 923;
+    unsigned num_users = 4, num_items = 1000;
 //    std::string FILE_SIZE = "_all";
-    std::string FILE_SIZE = "50000";
+    std::string FILE_SIZE = "100000";
     std::string USERS_NUM = "1000";
     std::string ITEMS_NUM = "1000";
     std::string DATA_FORMAT = "lastfm";
@@ -216,12 +246,13 @@ int main(const int argc, const char** argv) {
 
     std::cout << "Fitted. Start testing" << std::endl;
     double observation_window = 2000;
-    std::cout << "Test return time mae: " <<
+    auto metrics = user_metrics(low_rank_hawkes, user_sequences, train_data, user_items, observation_window, num_users);
+    std::cout << "Test return time mae: " << metrics.first << std::endl;
 //        mae(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
-        mae_user(low_rank_hawkes, user_sequences, train_data, user_items, observation_window, num_users) << std::endl;
-    std::cout << "Test SPU: " <<
+//        mae_user(low_rank_hawkes, user_sequences, train_data, user_items, observation_window, num_users) << std::endl;
+    std::cout << "Test SPU: " << metrics.second << std::endl;
 //        spu(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
-        spu_user(low_rank_hawkes, user_sequences, train_data, user_items, observation_window, num_users) << std::endl;
+//        spu_user(low_rank_hawkes, user_sequences, train_data, user_items, observation_window, num_users) << std::endl;
 
 //    unsigned test_userID = 0;
 //    double t = 100;

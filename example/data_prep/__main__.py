@@ -9,7 +9,7 @@ def main():
     arg_parser.add_argument('data_path')
     arg_parser.add_argument('--format', default='lastfm')
     arg_parser.add_argument('--size', default=1000 * 1000, type=int)
-    arg_parser.add_argument('--pairwise', default=True, action='store_true')
+    arg_parser.add_argument('--pairwise', default=False, action='store_true')
     arg_parser.add_argument('--sessions', default=False, action='store_true')
     arg_parser.add_argument('--users', default=1000, type=int)
     arg_parser.add_argument('--items', default=1000, type=int)
