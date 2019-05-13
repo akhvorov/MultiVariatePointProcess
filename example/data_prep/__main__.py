@@ -9,7 +9,7 @@ def main():
     arg_parser.add_argument('data_path')
     arg_parser.add_argument('--format', default='lastfm')
     arg_parser.add_argument('--size', default=1000 * 1000, type=int)
-    arg_parser.add_argument('--pairwise', default=False, action='store_true')
+    arg_parser.add_argument('--pairwise', default=True, action='store_true')
     arg_parser.add_argument('--sessions', default=False, action='store_true')
     arg_parser.add_argument('--users', default=1000, type=int)
     arg_parser.add_argument('--items', default=1000, type=int)
@@ -20,7 +20,7 @@ def main():
     size = args.size
     data_path = args.data_path
     data_form = args.format
-    filter_sessions = args.sessions
+    group_sessions = args.sessions
     train_ratio = args.train_share
     users = args.users
     items = args.items
@@ -29,11 +29,11 @@ def main():
     data_selector = process.top_data if filtration_type == 'top' else process.random_data
 
     if data_form == 'lastfm':
-        data = load_lastfm.read_sessions(data_path, size)
+        data = load_lastfm.read_events(data_path, size)
     else:
-        data = load_toloka.read_sessions(data_path, size)
-    if filter_sessions:
-        data = process.filter_sessions(data)
+        data = load_toloka.read_events(data_path, size)
+    if group_sessions:
+        data = process.group_events_to_event_seqs(data)
     data = process.filter_users_items(data, data_selector, users, items)
 
     if pairwise_split:

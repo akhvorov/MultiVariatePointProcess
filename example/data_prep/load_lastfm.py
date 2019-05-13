@@ -21,14 +21,14 @@ def time_convert_sort(data):
     return data
 
 
-def to_sessions(data):
-    def raw_to_session(raw):
-        user_id, ts, _, project_id, _, _ = raw
-        return Event(user_id, project_id, ts)
-    return list(map(raw_to_session, data))
+def to_events(data):
+    def raw_to_event(raw):
+        user_id, ts, _, item_id, _, _ = raw
+        return Event(user_id, item_id, ts)
+    return list(map(raw_to_event, data))
 
 
-def read_sessions(filename, size=None):
+def read_events(filename, size=None):
     data = read_raw(filename, size)
     data = time_convert_sort(data)
-    return to_sessions(data)
+    return to_events(data)
