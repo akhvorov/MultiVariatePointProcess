@@ -7,15 +7,15 @@ import numpy as np
 SESSION_MAX_DIFF = .5
 
 
-def filter_sessions(sessions):
+def group_events_to_event_seqs(events):
     last_times_done = defaultdict(lambda: -1)
-    filtered_sessions = []
-    for session in sessions:
-        pair = session.uid, session.pid
-        if session.start_ts - last_times_done[pair] > SESSION_MAX_DIFF:
-            filtered_sessions.append(session)
-        last_times_done[pair] = session.start_ts
-    return filtered_sessions
+    event_seqs = []
+    for event in events:
+        pair = event.uid, event.pid
+        if event.start_ts - last_times_done[pair] > SESSION_MAX_DIFF:
+            event_seqs.append(event)
+        last_times_done[pair] = event.start_ts
+    return event_seqs
 
 
 def top_data(data, key):

@@ -8,15 +8,15 @@ def read_raw(filename, size=None):
     return next(raw_data)
 
 
-def to_sessions(data):
-    def raw_to_session(raw):
+def to_events(data):
+    def raw_to_event(raw):
         user_id = raw.worker_id
         project_id = raw.project_id
         start_ts = int(raw.start_ts) / (60 * 60)
         return Event(user_id, project_id, start_ts)
-    return list(map(raw_to_session, data.itertuples()))
+    return list(map(raw_to_event, data.itertuples()))
 
 
-def read_sessions(filename, size=None):
+def read_events(filename, size=None):
     data = read_raw(filename, size)
-    return to_sessions(data)
+    return to_events(data)
