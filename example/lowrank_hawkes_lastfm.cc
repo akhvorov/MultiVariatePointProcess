@@ -21,6 +21,15 @@ double predict_user_next(LowRankHawkesProcess &model, std::vector <Sequence> &tr
     return prediction;
 }
 
+std::unordered_map<unsigned, unsigned> build_dim_to_seq(std::vector<Sequence> &data) {
+    std::unordered_map<unsigned, unsigned> dim_to_seq;
+    for (Sequence sequence: data) {
+        Event first_event = sequence.GetEvents()[0];
+        dim_to_seq[first_event.DimentionID] = first_event.SequenceID;
+    }
+    return std::move(dim_to_seq);
+}
+
 class Predictor {
 private:
     std::unordered_map<unsigned, double> predictions;
@@ -29,6 +38,7 @@ private:
     std::vector<Sequence> &train_data;
     std::unordered_map<int, std::vector<int>> &user_items;
     double observation_window;
+    std::unordered_map<unsigned, unsigned> dim_to_seq;
 public:
     Predictor(LowRankHawkesProcess &model, int num_users, std::vector<Sequence> &train_data,
             std::unordered_map<int, std::vector<int>> &user_items, double observation_window):
@@ -41,12 +51,24 @@ public:
                  predictions[dim_id] = model.PredictNextEventTime(user, item, observation_window, train_data);
              }
         }
+        dim_to_seq = build_dim_to_seq(train_data);
     }
 
-    void update(unsigned dimension) {
-        int user = dimension % num_users;
-        int item = dimension / num_users;
-        predictions[dimension] = model.PredictNextEventTime(user, item, observation_window, train_data);
+    void update(Event event) {
+        int user = event.DimentionID % num_users;
+        int item = event.DimentionID / num_users;
+        unsigned sequence;
+        auto dim_pos = dim_to_seq.find(event.DimentionID);
+        if (dim_pos == dim_to_seq.end()) {
+            sequence = train_data.size();
+            train_data.push_back(Sequence());
+            dim_to_seq[event.DimentionID] = sequence;
+            user_items[user].push_back(item);
+        } else {
+            sequence = dim_pos->second;
+        }
+        train_data[sequence].Add(event);
+        predictions[event.DimentionID] = model.PredictNextEventTime(user, item, observation_window, train_data);
     }
 
     double predict(unsigned user, double cur_time) {
@@ -149,13 +171,38 @@ double spu_user(LowRankHawkesProcess &model, std::unordered_map<int, Sequence> &
     return total_diff / count;
 }
 
-std::pair<double, double> user_metrics(LowRankHawkesProcess &model, std::unordered_map<int, Sequence> &user_sequences,
-                    std::vector <Sequence> train_data, std::unordered_map<int, std::vector<int>> &user_items,
-                    double observation_window, int num_users) {
-    double total_spu_diff = 0.;
-    double error = 0.;
-    long count_spu = 0;
-    long count_mae = 0;
+void group_by_users(int num_users, std::vector<Sequence> &data, std::unordered_map<int, Sequence> &user_sequences,
+                    std::unordered_map<int, std::vector<int>> &user_items) {
+    std::unordered_map<int, std::vector<Event>> user_events;
+    for (const Sequence& sequence : data) {
+        const std::vector<Event> &seq_events = sequence.GetEvents();
+        Event first_event = seq_events[0];
+        int user_id = first_event.DimentionID % num_users;
+        int item_id = first_event.DimentionID / num_users;
+        if (user_items.find(user_id) == user_items.end()) {
+            user_items.emplace(user_id, std::vector<int>());
+            user_events.emplace(user_id, std::vector<Event>());
+        }
+        user_items[user_id].push_back(item_id);
+        user_events[user_id].insert(user_events[user_id].end(), seq_events.begin(), seq_events.end());
+    }
+    for (auto it = user_events.begin(); it != user_events.end(); ++it) {
+        std::sort(it->second.begin(), it->second.end(), [](Event a, Event b) { return a.time < b.time; });
+        Sequence user_seq;
+        for (Event event: it->second) {
+            user_seq.Add(event);
+        }
+        user_sequences.emplace(it->first, user_seq);
+    }
+}
+
+std::pair<double, double> user_metrics(LowRankHawkesProcess &model, std::vector <Sequence> train_data,
+        std::vector <Sequence> test_data, double observation_window, int num_users) {
+    std::unordered_map<int, Sequence> user_sequences;
+    std::unordered_map<int, std::vector<int>> user_items;
+    group_by_users(num_users, test_data, user_sequences, user_items);
+    double total_spu_diff = 0., error = 0.;
+    long count_spu = 0, count_mae = 0;
     int step = 1;
     Predictor predictor(model, num_users, train_data, user_items, observation_window);
     for (auto it = user_sequences.begin(); it != user_sequences.end(); ++it) {
@@ -181,8 +228,7 @@ std::pair<double, double> user_metrics(LowRankHawkesProcess &model, std::unorder
                     count_spu++;
                 }
             }
-            train_data[event.SequenceID].Add(event);
-            predictor.update(event.DimentionID);
+            predictor.update(event);
             prev_time = event.time;
         }
     }
@@ -222,31 +268,6 @@ std::pair<double, double> user_metrics(LowRankHawkesProcess &model, std::unorder
 //    return error / count;
 //}
 
-void group_by_users(std::vector<Sequence> &data, std::unordered_map<int, Sequence> &user_sequences,
-        std::unordered_map<int, std::vector<int>> &user_items, int num_users) {
-    std::unordered_map<int, std::vector<Event>> user_events;
-    for (const Sequence& sequence : data) {
-        const std::vector<Event> &seq_events = sequence.GetEvents();
-        Event first_event = seq_events[0];
-        int user_id = first_event.DimentionID % num_users;
-        int item_id = first_event.DimentionID / num_users;
-        if (user_items.find(user_id) == user_items.end()) {
-            user_items.emplace(user_id, std::vector<int>());
-            user_events.emplace(user_id, std::vector<Event>());
-        }
-        user_items[user_id].push_back(item_id);
-        user_events[user_id].insert(user_events[user_id].end(), seq_events.begin(), seq_events.end());
-    }
-    for (auto it = user_events.begin(); it != user_events.end(); ++it) {
-        std::sort(it->second.begin(), it->second.end(), [](Event a, Event b) { return a.time < b.time; });
-        Sequence user_seq;
-        for (Event event: it->second) {
-            user_seq.Add(event);
-        }
-        user_sequences.emplace(it->first, user_seq);
-    }
-}
-
 int main(const int argc, const char** argv) {
 //    unsigned num_users = 1, num_items = 514;
 //    unsigned num_users = 4, num_items = 3083;  // 100k, MAE = 1517
@@ -258,7 +279,7 @@ int main(const int argc, const char** argv) {
 //    unsigned num_users = 528, num_items = 76443;  // 10M
 //    unsigned num_users = 992, num_items = 107296;  // all
 //    unsigned num_users = 992, num_items = 3000;  // all MAE = 581.221 (top projects), MAE = 728 (rand projects)
-    unsigned num_users = 4, num_items = 1000;
+    unsigned num_users = 4, num_items = 621;
 //    std::string FILE_SIZE = "_all";
     std::string FILE_SIZE = "100000";
     std::string USERS_NUM = "1000";
@@ -277,9 +298,6 @@ int main(const int argc, const char** argv) {
 
     ImportFromExistingUserItemSequences(TRAIN_FILENAME, num_users, num_items, train_data);
     ImportFromExistingUserItemSequences(TEST_FILENAME, num_users, num_items, test_data);
-    std::unordered_map<int, Sequence> user_sequences;
-    std::unordered_map<int, std::vector<int>> user_items;
-    group_by_users(test_data, user_sequences, user_items, num_users);
 
     unsigned dim = num_users * num_items;
     Eigen::VectorXd beta = Eigen::VectorXd::Constant(dim, 1);
@@ -297,7 +315,7 @@ int main(const int argc, const char** argv) {
 
     std::cout << "Fitted. Start testing" << std::endl;
     double observation_window = 2000;
-    auto metrics = user_metrics(low_rank_hawkes, user_sequences, train_data, user_items, observation_window, num_users);
+    auto metrics = user_metrics(low_rank_hawkes, train_data, test_data, observation_window, num_users);
     std::cout << "Test return time mae: " << metrics.first << std::endl;
 //        mae(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
 //        mae_user(low_rank_hawkes, user_sequences, train_data, user_items, observation_window, num_users) << std::endl;
