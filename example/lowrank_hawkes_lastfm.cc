@@ -21,6 +21,47 @@ double predict_user_next(LowRankHawkesProcess &model, std::vector <Sequence> &tr
     return prediction;
 }
 
+class Predictor {
+private:
+    std::unordered_map<unsigned, double> predictions;
+    LowRankHawkesProcess &model;
+    unsigned num_users;
+    std::vector<Sequence> &train_data;
+    std::unordered_map<int, std::vector<int>> &user_items;
+    double observation_window;
+public:
+    Predictor(LowRankHawkesProcess &model, int num_users, std::vector<Sequence> &train_data,
+            std::unordered_map<int, std::vector<int>> &user_items, double observation_window):
+            model(model), num_users(num_users), train_data(train_data), user_items(user_items),
+            observation_window(observation_window) {
+        for (auto it = user_items.begin(); it != user_items.end(); ++it) {
+             int user = it->first;
+             for (int item: it->second) {
+                 unsigned dim_id = item * num_users + user;
+                 predictions[dim_id] = model.PredictNextEventTime(user, item, observation_window, train_data);
+             }
+        }
+    }
+
+    void update(unsigned dimension) {
+        int user = dimension % num_users;
+        int item = dimension / num_users;
+        predictions[dimension] = model.PredictNextEventTime(user, item, observation_window, train_data);
+    }
+
+    double predict(unsigned user, double cur_time) {
+        double prediction = INF;
+        for (int item: user_items[user]) {
+            unsigned dim_id = item * num_users + user;
+            double item_prediction = predictions[dim_id];
+            if (item_prediction >= cur_time) {
+                prediction = std::min(prediction, item_prediction);
+            }
+        }
+        return prediction;
+    }
+};
+
 double mae(LowRankHawkesProcess &model, std::vector <Sequence> train_data,
            const std::vector <Sequence> &test_data, double observation_window, int num_users) {
     double error = 0.0;
@@ -116,22 +157,32 @@ std::pair<double, double> user_metrics(LowRankHawkesProcess &model, std::unorder
     long count_spu = 0;
     long count_mae = 0;
     int step = 1;
+    Predictor predictor(model, num_users, train_data, user_items, observation_window);
     for (auto it = user_sequences.begin(); it != user_sequences.end(); ++it) {
-        std::cout << "Step " << step++ << " of " << user_sequences.size() << std::endl;
+        std::cout << "Processing user " << step++ << " of " << user_sequences.size() << std::endl;
         int user_id = it->first;
         double prev_time = -1;
         for (const Event& event : it->second.GetEvents()) {
-            double predicted_time =
-                    predict_user_next(model, train_data, observation_window, num_users, user_id, user_items);
-            error += abs(event.time - predicted_time);
-            count_mae++;
             if (prev_time >= 0) {
+                double predicted_time = predictor.predict(user_id, prev_time);
+                error += abs(event.time - predicted_time);
+                count_mae++;
                 double delta_predicted = predicted_time - prev_time;
                 double delta_real = event.time - prev_time;
-                total_spu_diff += abs(1 / delta_real - 1 / delta_predicted);
-                count_spu++;
+//                if (delta_real <= 0) {
+//                    std::cout << "REAL " << event.time << " " << prev_time << std::endl;
+//                    std::cout << event.DimentionID << " " << prev_dim << std::endl;
+//                }
+//                if (delta_predicted <= 0) {
+//                    std::cout << "PREDICTED " << delta_predicted << " " << predicted_time << "\n";
+//                }
+                if (event.time != prev_time) {
+                    total_spu_diff += abs(1 / delta_real - 1 / delta_predicted);
+                    count_spu++;
+                }
             }
             train_data[event.SequenceID].Add(event);
+            predictor.update(event.DimentionID);
             prev_time = event.time;
         }
     }
@@ -253,16 +304,6 @@ int main(const int argc, const char** argv) {
     std::cout << "Test SPU: " << metrics.second << std::endl;
 //        spu(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
 //        spu_user(low_rank_hawkes, user_sequences, train_data, user_items, observation_window, num_users) << std::endl;
-
-//    unsigned test_userID = 0;
-//    double t = 100;
-//    std::cout << "3. Predicted Item for User " << test_userID <<": " << low_rank_hawkes.PredictNextItem(test_userID, t, data) << std::endl;
-//
-//    test_userID = 24;
-//    unsigned test_itemID = 6;
-//    double observation_window = 2000;
-//    std::cout << "4. Predicted next event for user " << test_userID << " and item " << test_itemID <<": " << low_rank_hawkes.PredictNextEventTime(test_userID, test_itemID, observation_window, data) << std::endl;
-
 
     return 0;
 }

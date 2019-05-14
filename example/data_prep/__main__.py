@@ -41,12 +41,12 @@ def main():
         train, test = process.pairwise_tts(data, train_ratio)
     else:
         train, test = process.train_test_split(data, train_ratio)
-        # train, test = process.filter_tts(train, test)
+        train, test = process.filter_tts(train, test)
         train, test = process.convert_to_dict(train), process.convert_to_dict(test)
 
     users_map, items_map = {}, {}
-    train = process.renumerate(train, users_map, items_map)
-    test = process.renumerate(test, users_map, items_map)
+    train = process.renumber(train, users_map, items_map)
+    test = process.renumber(test, users_map, items_map)
 
     print("|Users| = {}, |project| = {}".format(len(users_map), len(items_map)))
     file_pref = f'data/{data_form}/{data_form}_{filtration_type}_{size}_{users}_{items}_{train_ratio}'

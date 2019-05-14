@@ -83,7 +83,7 @@ def convert_to_dict(data):
     return data_dict
 
 
-def renumerate(data, old_to_new_users, old_to_new_projects):
+def renumber(data, old_to_new_users, old_to_new_projects):
     new_data = {}
     for (uid, pid), history in data.items():
         if uid not in old_to_new_users:
