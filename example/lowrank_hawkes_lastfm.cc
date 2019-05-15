@@ -11,6 +11,7 @@
 #include "LowRankHawkesProcess.h"
 
 const double INF = 1e18;
+const double SESSION_DIFF = .5;
 
 double predict_user_next(LowRankHawkesProcess &model, std::vector <Sequence> &train_data, double window,
         int num_users, int user, std::unordered_map<int, std::vector<int>> &user_items) {
@@ -35,12 +36,12 @@ private:
     std::unordered_map<unsigned, double> predictions;
     LowRankHawkesProcess &model;
     unsigned num_users;
-    std::vector<Sequence> &train_data;
+    std::vector<Sequence> train_data;
     std::unordered_map<int, std::vector<int>> &user_items;
     double observation_window;
     std::unordered_map<unsigned, unsigned> dim_to_seq;
 public:
-    Predictor(LowRankHawkesProcess &model, int num_users, std::vector<Sequence> &train_data,
+    Predictor(LowRankHawkesProcess &model, int num_users, std::vector<Sequence> train_data,
             std::unordered_map<int, std::vector<int>> &user_items, double observation_window):
             model(model), num_users(num_users), train_data(train_data), user_items(user_items),
             observation_window(observation_window) {
@@ -196,8 +197,8 @@ void group_by_users(int num_users, std::vector<Sequence> &data, std::unordered_m
     }
 }
 
-std::pair<double, double> user_metrics(LowRankHawkesProcess &model, std::vector <Sequence> train_data,
-        std::vector <Sequence> test_data, double observation_window, int num_users) {
+std::pair<double, double> user_metrics(LowRankHawkesProcess &model, std::vector <Sequence> &train_data,
+        std::vector <Sequence> &test_data, double observation_window, int num_users) {
     std::unordered_map<int, Sequence> user_sequences;
     std::unordered_map<int, std::vector<int>> user_items;
     group_by_users(num_users, test_data, user_sequences, user_items);
@@ -210,19 +211,13 @@ std::pair<double, double> user_metrics(LowRankHawkesProcess &model, std::vector 
         int user_id = it->first;
         double prev_time = -1;
         for (const Event& event : it->second.GetEvents()) {
-            if (prev_time >= 0) {
+            if (prev_time >= 0 && event.time - prev_time > SESSION_DIFF) {
                 double predicted_time = predictor.predict(user_id, prev_time);
                 error += abs(event.time - predicted_time);
                 count_mae++;
+
                 double delta_predicted = predicted_time - prev_time;
                 double delta_real = event.time - prev_time;
-//                if (delta_real <= 0) {
-//                    std::cout << "REAL " << event.time << " " << prev_time << std::endl;
-//                    std::cout << event.DimentionID << " " << prev_dim << std::endl;
-//                }
-//                if (delta_predicted <= 0) {
-//                    std::cout << "PREDICTED " << delta_predicted << " " << predicted_time << "\n";
-//                }
                 if (event.time != prev_time) {
                     total_spu_diff += abs(1 / delta_real - 1 / delta_predicted);
                     count_spu++;
@@ -279,9 +274,9 @@ int main(const int argc, const char** argv) {
 //    unsigned num_users = 528, num_items = 76443;  // 10M
 //    unsigned num_users = 992, num_items = 107296;  // all
 //    unsigned num_users = 992, num_items = 3000;  // all MAE = 581.221 (top projects), MAE = 728 (rand projects)
-    unsigned num_users = 4, num_items = 621;
+    unsigned num_users = 193, num_items = 1000;
 //    std::string FILE_SIZE = "_all";
-    std::string FILE_SIZE = "100000";
+    std::string FILE_SIZE = "5000000";
     std::string USERS_NUM = "1000";
     std::string ITEMS_NUM = "1000";
     std::string DATA_FORMAT = "lastfm";
