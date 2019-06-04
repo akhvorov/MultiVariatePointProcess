@@ -85,93 +85,6 @@ public:
     }
 };
 
-double mae(LowRankHawkesProcess &model, std::vector <Sequence> train_data,
-           const std::vector <Sequence> &test_data, double observation_window, int num_users) {
-    double error = 0.0;
-    int count = 0;
-    for (const Sequence& sequence : test_data) {
-        Event first_event = sequence.GetEvents()[0];
-        int user_id = first_event.DimentionID % num_users;
-        int item_id = first_event.DimentionID / num_users;
-        for (const Event& event : sequence.GetEvents()) {
-            double predicted_time = model.PredictNextEventTime(user_id, item_id, observation_window, train_data);
-            train_data[event.SequenceID].Add(event);
-            error += abs(event.time - predicted_time);
-            count++;
-        }
-    }
-    return error / count;
-}
-
-double spu(LowRankHawkesProcess& model, std::vector<Sequence> train_data,
-           const std::vector<Sequence>& test_data, double observation_window, int num_users) {
-    double total_diff = 0.;
-    long count = 0;
-    for (const Sequence& sequence : test_data) {
-        Event first_event = sequence.GetEvents()[0];
-        int user_id = first_event.DimentionID % num_users;
-        int item_id = first_event.DimentionID / num_users;
-        double prev_time = -1;
-        for (const Event& event : sequence.GetEvents()) {
-            if (prev_time >= 0) {
-                double predicted_time = model.PredictNextEventTime(user_id, item_id, observation_window, train_data);
-                double delta_predicted = predicted_time - prev_time;
-                double delta_real = event.time - prev_time;
-                total_diff += abs(1 / delta_predicted - 1 / delta_real);
-                ++count;
-            }
-            train_data[event.SequenceID].Add(event);
-            prev_time = event.time;
-        }
-    }
-    return total_diff / count;
-}
-
-double mae_user(LowRankHawkesProcess &model, std::unordered_map<int, Sequence> &user_sequences,
-                std::vector <Sequence> train_data, std::unordered_map<int, std::vector<int>> &user_items,
-                double observation_window, int num_users) {
-    double error = 0.0;
-    long count = 0;
-    int step = 1;
-    for (auto it = user_sequences.begin(); it != user_sequences.end(); ++it) {
-        std::cout << "Step " << step++ << std::endl;
-        int user_id = it->first;
-        for (const Event& event : it->second.GetEvents()) {
-            double predicted_time =
-                    predict_user_next(model, train_data, observation_window, num_users, user_id, user_items);
-            train_data[event.SequenceID].Add(event);
-            error += abs(event.time - predicted_time);
-            count++;
-        }
-    }
-    return error / count;
-}
-
-double spu_user(LowRankHawkesProcess &model, std::unordered_map<int, Sequence> &user_sequences,
-                std::vector <Sequence> train_data, std::unordered_map<int, std::vector<int>> &user_items,
-                double observation_window, int num_users) {
-    double total_diff = 0.;
-    long count = 0;
-    int step = 1;
-    for (auto it = user_sequences.begin(); it != user_sequences.end(); ++it) {
-        std::cout << "Step " << step++ << std::endl;
-        int user_id = it->first;
-        double prev_time = -1;
-        for (const Event& event : it->second.GetEvents()) {
-            if (prev_time >= 0) {
-                double delta_predicted = predict_user_next(model, train_data, observation_window, num_users,
-                                                           user_id, user_items) - prev_time;
-                double delta_real = event.time - prev_time;
-                total_diff += abs(1 / delta_real - 1 / delta_predicted);
-                count++;
-            }
-            train_data[event.SequenceID].Add(event);
-            prev_time = event.time;
-        }
-    }
-    return total_diff / count;
-}
-
 void group_by_users(int num_users, std::vector<Sequence> &data, std::unordered_map<int, Sequence> &user_sequences,
                     std::unordered_map<int, std::vector<int>> &user_items) {
     std::unordered_map<int, std::vector<Event>> user_events;
@@ -229,39 +142,6 @@ std::pair<double, double> user_metrics(LowRankHawkesProcess &model, std::vector 
     }
     return std::make_pair(error / count_mae, total_spu_diff / count_spu);
 }
-
-//double unseen_rec(LowRankHawkesProcess& model, std::vector<Sequence> train_data,
-//                       const std::vector<Sequence>& test_data, double observation_window, int num_users) {
-//    std::unordered_map<int, std::unordered_set<int>> all_unseen_projects;
-//    std::unordered_map<int, std::unordered_set<int>> will_seen_projects;
-//    for (const Sequence& sequence : test_data) {
-//        Event first_event = sequence.GetEvents()[0];
-//        int user_id = first_event.DimentionID % num_users;
-//        int item_id = first_event.DimentionID / num_users;
-//        will_seen_projects[user_id].insert(item_id);
-//    }
-//    for (const Sequence& sequence : train_data) {
-//        Event first_event = sequence.GetEvents()[0];
-//        int user_id = first_event.DimentionID % num_users;
-//        int item_id = first_event.DimentionID / num_users;
-//        will_seen_projects[user_id].insert(item_id);
-//    }
-//    double error = 0.0;
-//    int count = 0;
-//    for (const Sequence& sequence : test_data) {
-//        Event first_event = sequence.GetEvents()[0];
-//        int user_id = first_event.DimentionID % num_users;
-//        int item_id = first_event.DimentionID / num_users;
-//        for (const Event& event : sequence.GetEvents()) {
-//            double predicted_time = model.PredictNextEventTime(user_id, item_id, observation_window, train_data);
-//            train_data[event.SequenceID].Add(event);
-//
-//            error += abs(event.time - predicted_time);
-//            count++;
-//        }
-//    }
-//    return error / count;
-//}
 
 int main(const int argc, const char** argv) {
 //    unsigned num_users = 1, num_items = 514;
