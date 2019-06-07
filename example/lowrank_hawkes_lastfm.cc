@@ -73,12 +73,25 @@ public:
     }
 
     double predict(unsigned user, double cur_time) {
-        double prediction = INF;
-        for (int item: user_items[user]) {
-            unsigned dim_id = item * num_users + user;
-            double item_prediction = predictions[dim_id];
-            if (item_prediction >= cur_time) {
-                prediction = std::min(prediction, item_prediction);
+        double prediction = -1;
+        while (prediction - cur_time < SESSION_DIFF) {
+            prediction = INF;
+            int closest_item = -1;
+            for (int item: user_items[user]) {
+                unsigned dim_id = item * num_users + user;
+                double item_prediction = predictions[dim_id];
+                if (item_prediction >= cur_time) {
+                    if (item_prediction < prediction) {
+                        closest_item = item;
+                        prediction = item_prediction;
+                    }
+                }
+            }
+            if (prediction - cur_time < SESSION_DIFF) {
+                Event e;
+                e.DimentionID = closest_item * num_users + user;
+                e.time = prediction;
+                update(e);
             }
         }
         return prediction;
@@ -192,11 +205,7 @@ int main(const int argc, const char** argv) {
     double observation_window = 2000;
     auto metrics = user_metrics(low_rank_hawkes, train_data, test_data, observation_window, num_users);
     std::cout << "Test return time mae: " << metrics.first << std::endl;
-//        mae(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
-//        mae_user(low_rank_hawkes, user_sequences, train_data, user_items, observation_window, num_users) << std::endl;
     std::cout << "Test SPU: " << metrics.second << std::endl;
-//        spu(low_rank_hawkes, train_data, test_data, observation_window, num_users) << std::endl;
-//        spu_user(low_rank_hawkes, user_sequences, train_data, user_items, observation_window, num_users) << std::endl;
 
     return 0;
 }
